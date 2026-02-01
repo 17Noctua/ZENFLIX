@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>ZenFlix</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root {
+  --red:#e50914;
+  --bg:#000;
+  --text:#fff;
+  --muted:#aaa;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+
+body{background:var(--bg);color:var(--text);display:flex}
+
+/* BACKGROUND */
+.background{
+  position:fixed;inset:0;
+  background-size:cover;
+  background-position:center;
+  filter:blur(18px) brightness(.35);
+  z-index:-1;
+  transition:.5s;
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;height:100vh;
+  background:rgba(0,0,0,.8);
+  padding:25px;position:fixed
+}
+.sidebar h2{color:var(--red);margin-bottom:30px}
+.sidebar a{display:block;color:var(--muted);margin:15px 0;text-decoration:none}
+.sidebar a:hover{color:var(--red)}
+
+/* MAIN */
+.main{margin-left:220px;width:calc(100% - 220px)}
+
+/* HEADER */
+header{
+  height:70px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 40px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);
+  position:sticky;top:0
+}
+header h1{color:var(--red)}
+.search{background:#111;border:1px solid #222;color:#fff;padding:8px;border-radius:4px}
+
+/* SECTIONS */
+section{padding:25px 40px}
+section h3{color:var(--red);margin-bottom:12px}
+
+/* ROW */
+.row{display:flex;gap:20px;overflow-x:auto}
+
+/* CARD */
+.card{
+  min-width:320px;height:180px;border-radius:10px;
+  overflow:hidden;position:relative;cursor:pointer
+}
+.card img{width:100%;height:100%;object-fit:cover}
+.card:hover{transform:scale(1.07);z-index:3}
+
+/* OVERLAY */
+.overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.9),transparent);
+  padding:15px;opacity:0;transition:.3s;
+  display:flex;flex-direction:column;justify-content:flex-end
+}
+.card:hover .overlay{opacity:1}
+
+/* MODAL DETAIL */
+.modal{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.9);
+  display:none;z-index:10;
+  overflow:auto
+}
+.modal-content{
+  max-width:1000px;margin:50px auto;padding:30px
+}
+.modal h2{color:var(--red)}
+.close{float:right;font-size:28px;cursor:pointer}
+
+/* SEASONS */
+.seasons button{
+  background:#111;border:1px solid #333;color:#fff;
+  padding:8px;margin:5px;cursor:pointer
+}
+.episodes div{
+  padding:8px;border-bottom:1px solid #222;
+  cursor:pointer
+}
+.episodes div:hover{color:var(--red)}
+</style>
+</head>
+
+<body>
+
+<div class="background" id="bg"></div>
+
+<div class="sidebar">
+  <h2>ZenFlix</h2>
+  <a href="#">Accueil</a>
+  <a href="#">Films</a>
+  <a href="#">Séries</a>
+</div>
+
+<div class="main">
+<header>
+  <h1>ZenFlix</h1>
+  <input class="search" placeholder="Rechercher..." oninput="search(this.value)">
+</header>
+
+<section>
+  <h3>CONTINUER À REGARDER</h3>
+  <div class="row" id="continue"></div>
+</section>
+
+<section>
+  <h3>FILMS POPULAIRES</h3>
+  <div class="row" id="films"></div>
+</section>
+
+<section>
+  <h3>SÉRIES</h3>
+  <div class="row" id="series"></div>
+</section>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">✖</span>
+    <h2 id="mTitle"></h2>
+    <p id="mDesc"></p><br>
+    <iframe id="mTrailer" width="100%" height="400"></iframe>
+    <div class="seasons" id="seasons"></div>
+    <div class="episodes" id="episodes"></div>
+  </div>
+</div>
+
+<script>
+const bg=document.getElementById("bg");
+const modal=document.getElementById("modal");
+const continueRow=document.getElementById("continue");
+
+const films=[{
+  title:"King Kong (2005)",
+  img:"https://m.media-amazon.com/images/S/pv-target-images/376c6b51de9583f2d2b359b6fdfdc0e08268917fa7c109ff462b085892584577.jpg",
+  bg:"https://images2.alphacoders.com/848/thumb-1920-84840.jpg",
+  desc:"Une expédition découvre une créature légendaire.",
+  trailer:"https://www.youtube.com/watch?v=l6xEypeB3iU",
+  link:"https://t.me/c/3588267924/178/182"
+}];
+
+const series=[{
+  title:"Stranger Things",
+  img:"https://lubieenserie.fr/wp-content/uploads/2025/11/stranger-things-saison-5-scaled.png.webp",
+  bg:"https://fr.web.img4.acsta.net/r_654_368/newsv7/20/02/13/17/39/0662301.jpg",
+  desc:"Disparitions étranges à Hawkins.",
+  trailer:"https://www.youtube.com/watch?v=l7nzodXfVsg",
+  seasons:{
+    "Saison 1":["Ep 1","Ep 2","Ep 3"],
+    "Saison 2":["Ep 1","Ep 2"]
+  },
+  link:"https://t.me/+qDYSMy4jeQ9lODE0"
+}];
+
+function createCard(item,type){
+  const d=document.createElement("div");
+  d.className="card";
+  d.onmouseenter=()=>bg.style.backgroundImage=`url(${item.bg})`;
+  d.onclick=()=>openModal(item,type);
+  d.innerHTML=`<img src="${item.img}">
+  <div class="overlay"><strong>${item.title}</strong></div>`;
+  return d;
+}
+
+function render(){
+  films.forEach(f=>filmsRow.appendChild(createCard(f,"film")));
+  series.forEach(s=>seriesRow.appendChild(createCard(s,"serie")));
+}
+const filmsRow=document.getElementById("films");
+const seriesRow=document.getElementById("series");
+
+function openModal(item,type){
+  modal.style.display="block";
+  mTitle.textContent=item.title;
+  mDesc.textContent=item.desc;
+  mTrailer.src=item.trailer;
+  bg.style.backgroundImage=`url(${item.bg})`;
+  localStorage.setItem("continue",JSON.stringify(item));
+  renderContinue();
+  seasons.innerHTML="";episodes.innerHTML="";
+  if(type==="serie"){
+    Object.keys(item.seasons).forEach(sea=>{
+      const b=document.createElement("button");
+      b.textContent=sea;
+      b.onclick=()=>showEpisodes(item.seasons[sea],item.link);
+      seasons.appendChild(b);
+    });
+  }
+}
+
+function showEpisodes(list,link){
+  episodes.innerHTML="";
+  list.forEach(e=>{
+    const d=document.createElement("div");
+    d.textContent=e;
+    d.onclick=()=>window.open(link);
+    episodes.appendChild(d);
+  });
+}
+
+function closeModal(){
+  modal.style.display="none";
+  mTrailer.src="";
+}
+
+function renderContinue(){
+  continueRow.innerHTML="";
+  const c=JSON.parse(localStorage.getItem("continue"));
+  if(c) continueRow.appendChild(createCard(c,"film"));
+}
+
+render();
+renderContinue();
+</script>
+
+</body>
+</html>
